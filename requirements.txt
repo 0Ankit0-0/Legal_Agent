@@ -1,0 +1,60 @@
+# Core Python packages for legal AI agents
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# Natural Language Processing
+spacy>=3.6.0
+# Download spaCy English model: python -m spacy download en_core_web_sm
+
+# Numerical computing and data handling
+numpy>=1.24.0
+pandas>=2.0.0
+
+# Machine Learning and AI
+scikit-learn>=1.3.0
+transformers>=4.30.0
+tokenizers>=0.13.0
+
+# API clients for external AI services
+openai>=1.0.0
+google-generativeai>=0.3.0
+
+# HTTP requests and API handling
+requests>=2.31.0
+httpx>=0.24.0
+
+# Data serialization and storage
+pickle5>=0.0.11
+jsonlines>=3.1.0
+
+# File and path handling
+pathlib2>=2.3.7
+
+# Logging and utilities
+python-dotenv>=1.0.0
+tqdm>=4.65.0
+
+# Optional: For enhanced model training
+accelerate>=0.20.0
+datasets>=2.12.0
+
+# Optional: For vector databases and embeddings
+faiss-cpu>=1.7.4
+sentence-transformers>=2.2.2
+
+# Optional: For web interface (if needed)
+streamlit>=1.24.0
+gradio>=3.35.0
+
+# Development and testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+black>=23.0.0
+isort>=5.12.0
+flake8>=6.0.0
+
+# Optional: For deployment
+gunicorn>=20.1.0
+uvicorn>=0.22.0
+fastapi>=0.100.0
