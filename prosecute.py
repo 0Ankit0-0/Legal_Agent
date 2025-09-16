@@ -1,6 +1,6 @@
 import random
 from typing import Dict, List, Optional, Tuple, Any
-from .base_agent import BaseAgent
+from base_agent import BaseAgent
 
 
 class ProsecutorAgent(BaseAgent):

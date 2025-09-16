@@ -1,6 +1,6 @@
 import random
 from typing import Dict, List, Optional, Tuple, Any
-from .base_agent import BaseAgent
+from base_agent import BaseAgent
 
 
 class JudgeAgent(BaseAgent):
@@ -88,20 +88,37 @@ class JudgeAgent(BaseAgent):
         evidence_strength = self._evaluate_evidence_strength()
         legal_complexity = self._assess_legal_complexity()
 
-        # Judicial reasoning
-        thought = "The Court has carefully considered the arguments presented by both the prosecution and defense. "
-
-        if evidence_strength > 0.7:
-            thought += "The evidence presented appears to be substantial and credible. "
-        elif evidence_strength > 0.4:
-            thought += "The evidence presented requires careful examination and may be circumstantial. "
+        # Check if it's time for final judgment
+        rounds_completed = len(self.prosecution_arguments) + len(self.defense_arguments)
+        
+        if rounds_completed >= 6:  # After sufficient arguments
+            # Judicial reasoning for final judgment
+            thought = "The Court has heard extensive arguments from both sides and examined all evidence presented. "
+            thought += "After careful deliberation, considering the burden of proof and the standard of evidence required, "
+            
+            if evidence_strength > 0.6:
+                thought += "the Court finds that the prosecution has established its case beyond reasonable doubt. "
+                thought += "The evidence is credible, substantial, and forms a complete chain pointing to the guilt of the accused. "
+            else:
+                thought += "the Court finds that the prosecution has not met the required burden of proof. "
+                thought += "The evidence presented has reasonable gaps and does not establish guilt beyond reasonable doubt. "
+            
+            thought += "The Court will now render its final verdict based on law, evidence, and principles of justice."
         else:
-            thought += "The evidence presented appears to be limited and may not meet the required standard. "
+            # Regular judicial reasoning during proceedings
+            thought = "The Court has carefully considered the arguments presented by both the prosecution and defense. "
 
-        thought += "The Court notes that the burden of proof lies with the prosecution to establish guilt beyond reasonable doubt. "
+            if evidence_strength > 0.7:
+                thought += "The evidence presented appears to be substantial and credible. "
+            elif evidence_strength > 0.4:
+                thought += "The evidence presented requires careful examination and may be circumstantial. "
+            else:
+                thought += "The evidence presented appears to be limited and may not meet the required standard. "
 
-        if self.prosecution_arguments and self.defense_arguments:
-            thought += "Both sides have presented their arguments, and the Court must weigh them against the applicable law. "
+            thought += "The Court notes that the burden of proof lies with the prosecution to establish guilt beyond reasonable doubt. "
+
+            if self.prosecution_arguments and self.defense_arguments:
+                thought += "Both sides have presented their arguments, and the Court must weigh them against the applicable law. "
 
         # Reference applicable legal sections
         referenced_sections = self._identify_applicable_sections()
@@ -111,7 +128,7 @@ class JudgeAgent(BaseAgent):
             section_info = self.laws.get("ipc", {}).get(primary_section, {})
             thought += f"The Court finds that IPC Section {primary_section} ({section_info.get('title', '')}) is particularly relevant to this case. "
 
-        thought += "The Court will render its decision based on the law, evidence, and principles of natural justice."
+        thought += "The Court ensures that all proceedings are conducted in accordance with the principles of natural justice."
 
         # Find most relevant evidence
         relevant_evidence = None
@@ -145,17 +162,36 @@ class JudgeAgent(BaseAgent):
         score = 0
         for ev in self.evidence:
             ev_type = ev.get("type", "").lower()
+            relevance = ev.get("relevance", "").lower()
+            
+            # Score based on evidence type
             if ev_type in ["forensic", "dna", "fingerprint", "video", "audio"]:
                 score += 0.3
+            elif ev_type in ["medical", "post-mortem", "autopsy"]:
+                score += 0.25
             elif ev_type in ["witness", "testimony", "statement"]:
                 score += 0.2
             elif ev_type in ["document", "record", "report"]:
+                score += 0.15
+            elif ev_type in ["physical", "material"]:
+                score += 0.2
+            elif ev_type in ["digital", "electronic"]:
+                score += 0.1
+
+            # Score based on relevance
+            if relevance == "critical":
+                score += 0.2
+            elif relevance == "high":
+                score += 0.15
+            elif relevance == "medium":
                 score += 0.1
 
             # Consider content quality (length as proxy)
             content_length = len(ev.get("text", ""))
             if content_length > 500:
                 score += 0.1
+            elif content_length > 200:
+                score += 0.05
 
         return min(score, 1.0)
 
@@ -200,21 +236,31 @@ class JudgeAgent(BaseAgent):
         """Generate judicial statement from thought result."""
         thought, evidence_file, section = thought_result
 
-        # Formal judicial statement
-        statement = "The Court has given due consideration to all arguments and evidence presented by both parties. "
-        statement += thought
+        # Determine if this should be a final judgment
+        rounds_completed = len(self.prosecution_arguments) + len(self.defense_arguments)
+        
+        if rounds_completed >= 6 and not self.verdict_rendered:
+            # This is the final judgment
+            statement = "The Court has given due consideration to all arguments and evidence presented by both parties. "
+            statement += thought
+            statement += " Having heard all parties and examined the evidence, the Court is now ready to pronounce its verdict."
+            
+        else:
+            # Regular judicial statement
+            statement = "The Court acknowledges the arguments presented by both counsel. "
+            statement += thought
 
-        # Reference to evidence if applicable
-        if evidence_file:
-            statement += f" The Court particularly notes the significance of evidence file {evidence_file} in this matter. "
+            # Reference to evidence if applicable
+            if evidence_file:
+                statement += f" The Court particularly notes the significance of evidence file {evidence_file} in this matter. "
 
-        # Legal section reference
-        if section:
-            section_info = self.laws.get("ipc", {}).get(section, {})
-            statement += f" The Court finds that IPC Section {section} ({section_info.get('title', '')}) is central to the legal determination in this case. "
+            # Legal section reference
+            if section:
+                section_info = self.laws.get("ipc", {}).get(section, {})
+                statement += f" The Court finds that IPC Section {section} ({section_info.get('title', '')}) is central to the legal determination in this case. "
 
-        # Procedural note
-        statement += "The Court ensures that all proceedings are conducted in accordance with the principles of natural justice and due process. "
+            # Procedural note
+            statement += " The Court ensures that all proceedings are conducted in accordance with the principles of natural justice and due process."
 
         return {
             "role": self.role,
@@ -290,29 +336,52 @@ class JudgeAgent(BaseAgent):
         """Fallback verdict generation using rule-based approach."""
 
         # Simple scoring system
-        prosecution_score = len(self.prosecution_arguments) * 0.3
-        defense_score = len(self.defense_arguments) * 0.3
-        evidence_score = self._evaluate_evidence_strength() * 0.4
+        prosecution_score = len(self.prosecution_arguments) * 0.2
+        defense_score = len(self.defense_arguments) * 0.15
+        evidence_score = self._evaluate_evidence_strength() * 0.6
+        
+        # Additional scoring based on evidence quality
+        high_relevance_evidence = sum(1 for ev in self.evidence if ev.get("relevance") == "critical" or ev.get("relevance") == "high")
+        evidence_quality_score = min(high_relevance_evidence * 0.1, 0.3)
 
-        # Adjust for evidence quality
-        total_score = prosecution_score + evidence_score - defense_score
+        # Adjust for evidence quality and prosecution burden
+        total_score = prosecution_score + evidence_score + evidence_quality_score - (defense_score * 0.5)
 
-        # Determine verdict (higher threshold for conviction)
-        if total_score > 0.7:
+        # Determine verdict (higher threshold for conviction due to burden of proof)
+        if total_score > 0.8:
             verdict = "Guilty"
-            reasoning = "The Court finds that the prosecution has proven its case beyond reasonable doubt. The evidence presented is credible and substantial."
+            reasoning = "The Court finds that the prosecution has proven its case beyond reasonable doubt. " \
+                       "The evidence presented is credible, substantial, and forms a complete chain of circumstances " \
+                       "that points unerringly to the guilt of the accused. The defense has not been able to create " \
+                       "reasonable doubt in the prosecution's case."
 
             # Determine sentence based on applicable sections
             applicable_sections = self._identify_applicable_sections()
             if applicable_sections:
                 primary_section = applicable_sections[0]
                 section_info = self.laws.get("ipc", {}).get(primary_section, {})
-                sentence = f"The accused is sentenced according to IPC Section {primary_section}."
+                if primary_section == "302":
+                    sentence = "The accused is sentenced to imprisonment for life under Section 302 of the Indian Penal Code."
+                else:
+                    sentence = f"The accused is sentenced according to IPC Section {primary_section}: {section_info.get('title', '')}."
             else:
                 sentence = "The Court will determine appropriate sentencing based on the gravity of the offense."
+                
+        elif total_score > 0.6:
+            verdict = "Guilty"
+            reasoning = "The Court finds that while there are some gaps in the evidence, the prosecution has " \
+                       "established its case on the preponderance of probabilities. However, given the seriousness " \
+                       "of the charges, the Court will consider mitigating circumstances in sentencing."
+            sentence = "The accused is found guilty but sentenced to a reduced punishment considering the circumstances."
+            applicable_sections = self._identify_applicable_sections()
+            
         else:
             verdict = "Not Guilty"
-            reasoning = "The Court finds that the prosecution has not proven its case beyond reasonable doubt. The evidence is insufficient to establish guilt."
+            reasoning = "The Court finds that the prosecution has not proven its case beyond reasonable doubt. " \
+                       "While there may be suspicions and circumstantial evidence, the chain of evidence is not " \
+                       "complete and unbroken as required by law. The defense has successfully created reasonable " \
+                       "doubt regarding the accused's guilt. The presumption of innocence in favor of the accused " \
+                       "has not been rebutted by the prosecution."
             sentence = None
             applicable_sections = []
 
@@ -322,3 +391,9 @@ class JudgeAgent(BaseAgent):
             "sentence": sentence,
             "applied_sections": applicable_sections,
         }
+
+    def get_verdict(self) -> Optional[Dict[str, Any]]:
+        """Get current verdict status - for compatibility"""
+        if self.verdict_rendered:
+            return self._fallback_verdict()
+        return None
